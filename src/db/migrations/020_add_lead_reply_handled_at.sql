@@ -1,0 +1,16 @@
+-- 020: leads.reply_handled_at — marks the CURRENT inbound reply as triaged,
+-- independent of the pipeline `status`.
+--
+-- Booking (-> 'booked') and rejecting (-> 'rejected') already remove a lead
+-- from the unhandled-replies view because they change `status` away from
+-- 'replied'/'not_interested'. But categories like wrong_person, pricing, and
+-- send_info have no natural terminal status — the human answers/redirects
+-- the reply and the lead legitimately stays 'replied' (still in the
+-- sequence, or just parked). Without this column there was no way to clear
+-- those from the Dashboard's Needs Attention count short of a fake
+-- book/reject, so they piled up as "unhandled" forever (2026-07-27 finding).
+--
+-- Set on mark-booked / mark-not-interested / mark-reply-handled. Reset to
+-- NULL by the Instantly/Aimfox reply webhooks whenever a fresh reply comes
+-- in, so a previously-handled lead that replies again shows back up.
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS reply_handled_at TIMESTAMPTZ;

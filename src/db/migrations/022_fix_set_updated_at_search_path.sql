@@ -1,0 +1,15 @@
+-- 022: Fix Supabase Security Advisor warning function_search_path_mutable on
+-- public.set_updated_at (the shared updated_at trigger function used by
+-- campaigns/leads/emails/knowledge_base/users/settings). A function with no
+-- explicit search_path is vulnerable to search_path hijacking — a caller
+-- could shadow an unqualified reference by creating an object earlier in
+-- their own search_path. Locking it to an empty search_path is the
+-- standard remediation.
+--
+-- Safe here: set_updated_at()'s entire body is `NEW.updated_at = now();
+-- RETURN NEW;` — the only call is now(), a pg_catalog builtin, and
+-- pg_catalog is always implicitly searched regardless of search_path (even
+-- when it's set to ''). NEW/RETURN NEW are trigger record variables, not
+-- schema lookups. No table or type name appears anywhere in the body, so
+-- there is nothing an empty search_path could break.
+ALTER FUNCTION public.set_updated_at() SET search_path = '';
